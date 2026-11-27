@@ -1,5 +1,11 @@
 # TrafficMind — Traffic AI Lab
 
+## Links
+
+- [Open the local app](http://127.0.0.1:3000/)
+- [Run the app on GitHub Pages](https://alokprakhar-879.github.io/TrafficMind/)
+- [View the source on GitHub](https://github.com/alokprakhar-879/TrafficMind)
+
 Open `index.html`. You need no install, internet, API or backend.
 1. Choose the traffic settings.
 2. Click **Learn Model**.
