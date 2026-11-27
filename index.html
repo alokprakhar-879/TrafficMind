@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TrafficMind — Traffic AI Lab</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div>
+      <small>INTELLIGENT TRANSPORT SYSTEMS / SIMULATION LAB</small>
+      <h1>TrafficMind</h1>
+      <p>One reinforcement-learning agent · three learning phases</p>
+    </div>
+    <span id="model">Untrained model</span>
+  </header>
+
+  <main>
+    <aside>
+      <h2>Traffic configuration</h2>
+      <div class="inputs" id="counts"></div>
+      <label>Left turn % <input id="left" type="number" min="0" max="100" value="20"></label>
+      <label>Right turn % <input id="right" type="number" min="0" max="100" value="20"></label>
+      <label>Arrivals / second / approach <input id="arrival" type="number" min="0" max="0.5" step="0.01" value="0.05"></label>
+      <label>Road conditions
+        <select id="condition">
+          <option value="normal">Normal</option>
+          <option value="rush">Rush hour</option>
+          <option value="peak">Rush hour peak (builds up, N/S busier)</option>
+          <option value="rain">Heavy rain</option>
+          <option value="roadwork">Roadwork</option>
+        </select>
+      </label>
+
+      <h2>Emergency vehicle</h2>
+      <label><input id="amb" type="checkbox" checked> Enable ambulance</label>
+      <label>Approach
+        <select id="ambDir">
+          <option value="0">North</option>
+          <option value="1">South</option>
+          <option value="2">East</option>
+          <option value="3">West</option>
+        </select>
+      </label>
+      <label>Movement
+        <select id="ambMove">
+          <option value="1">Straight</option>
+          <option value="0">Left</option>
+          <option value="2">Right</option>
+        </select>
+      </label>
+      <label>Distance (m)<input id="distance" type="number" min="0" max="3000" value="650"></label>
+
+      <h2>Experiment</h2>
+      <label>Duration (seconds)<input id="duration" type="number" min="60" max="3600" value="300"></label>
+      <label>Random seed<input id="seed" type="number" value="42" min="0"></label>
+      <label>Training episodes<input id="episodes" type="number" value="1000" min="10" max="3000" step="10"></label>
+      <button id="train" class="primary">Learn Model</button>
+      <small>Starts from zero every time. Validate every 25 episodes; stop after 400 without improvement. All checkpoints are temporary; reset or refresh erases them.</small>
+      <progress id="training" max="1" value="0"></progress>
+      <button id="run" class="primary">Run phases</button>
+      <button id="reset">Reset learned model</button>
+      <p id="message" role="status"></p>
+    </aside>
+
+    <article>
+      <nav id="tabs">
+        <button data-i="0" class="active">01 Exploring</button>
+        <button data-i="1">02 Learning</button>
+        <button data-i="2">03 Trained</button>
+      </nav>
+      <div id="phaseBanner"></div>
+
+      <div class="visual">
+        <section>
+          <div class="sectionhead"><h2>Live intersection</h2><span id="clock">0 / 300 s</span></div>
+          <canvas id="road" width="620" height="620" aria-label="Animated intersection"></canvas>
+          <div class="controls">
+            <button id="restart">Reset</button>
+            <button id="play">▶ Play</button>
+            <button id="back">Previous round</button>
+            <button id="next">Next round</button>
+            <select id="speed">
+              <option value="1">1×</option>
+              <option value="4" selected>4×</option>
+              <option value="12">12×</option>
+            </select>
+            <button id="end">End</button>
+            <input id="seek" type="range" min="0" max="299" value="0">
+          </div>
+          <small>Left-hand traffic · dedicated L / S / R queues · red/amber/green movement signals</small>
+        </section>
+
+        <section>
+          <h2>Controller telemetry</h2>
+          <div id="status"></div>
+          <h2>Movement queues</h2>
+          <table>
+            <thead><tr><th>Approach</th><th>Left</th><th>Straight</th><th>Right</th></tr></thead>
+            <tbody id="queues"></tbody>
+          </table>
+          <h2>Decision explanation</h2>
+          <div id="roundStatus"></div>
+          <div id="decision" class="explain"></div>
+          <h2>Validation wait (lower is better)</h2>
+          <canvas id="chart" width="480" height="170"></canvas>
+          <small>Teal: validation wait at each check · Green: best saved wait. The best checkpoint is the one with the lowest wait.</small>
+          <p id="validationNote"></p>
+          <h2>Training reward history</h2>
+          <canvas id="trainingChart" width="480" height="170"></canvas>
+          <small id="trainingNote"></small>
+        </section>
+      </div>
+
+      <section>
+        <h2>Round traffic snapshot</h2>
+        <div id="priority"></div>
+      </section>
+
+      <section>
+        <h2>Round comparison</h2>
+        <p>Recorded outcomes for the selected round number (each phase’s own rounds). Same round number, potentially different elapsed time. Final comparison below uses the same elapsed time.</p>
+        <div id="roundCompare"></div>
+        <details id="compareDetails">
+          <summary>Optional synchronized intersection views</summary>
+          <h2>Live synchronized comparison</h2>
+          <div id="mini" class="mini"></div>
+          <h2>Signal timeline</h2>
+          <div id="timeline"></div>
+        </details>
+      </section>
+
+      <section>
+        <h2>Round mathematics</h2>
+        <div id="math"></div>
+      </section>
+
+      <section>
+        <details>
+          <summary>How AI learns (optional learning laboratory)</summary>
+          <h2>RL Learning Laboratory</h2>
+          <p>Replay real training decisions, inspired by the Grid World demonstration. The table compares the three temporary checkpoints of the same agent on the current traffic scenario. Episode zero has no learned weights and acts randomly.</p>
+          <div id="checkpointResults"></div>
+          <h3>Actual training episode replay</h3>
+          <select id="episodePick"></select>
+          <div class="controls">
+            <button id="labPrev">Previous</button>
+            <button id="labNext">Next</button>
+            <span id="labStep"></span>
+          </div>
+          <div id="labMath"></div>
+        </details>
+      </section>
+
+      <section>
+        <div class="sectionhead"><h2>Measured performance</h2><button id="export">Export CSV</button></div>
+        <p class="muted">Same initial vehicles, arrivals, road conditions and selected time horizon. All three phases are the same agent with different amounts of training. There is no emergency override; the agent must learn it.</p>
+        <div class="scroll"><table id="metrics"></table></div>
+        <div id="bars"></div>
+        <p class="muted">Waiting time includes unfinished queues (observed waiting per arriving vehicle). Waste is green time with no eligible vehicle waiting. Ambulance crossing time is measured from simulation start; an uncleared ambulance is reported separately.</p>
+      </section>
+
+      <section>
+        <h2>Formula reference</h2>
+        <div id="formulas"></div>
+        <h2>Algorithm &amp; safety model</h2>
+        <p>w ← w + α [r + 0.9 max Q(s′,a′) − Q(s,a)] φ(s,a)</p>
+        <p>Q(s,stage) = w · φ(s,stage): a linear function of 11 raw traffic features (queue, clearance time, oldest wait, current green, other queues, ambulance). Every 10 s the agent picks one of four protected stages; the same stage again extends green. Exploration decays from 1 to 0.05 and step size from 0.0005 to 0.00005 over the training budget. No hand-written rules, forecast, override or masks: everything is learned from reward. Yellow (3s) and all-red (2s) separate different stages.</p>
+        <p class="muted">Educational queue model, not a certified traffic controller. Assumes dedicated lanes and compatible paired protected turns; no pedestrians or downstream spillback.</p>
+      </section>
+    </article>
+  </main>
+
+  <script src="engine.js"></script>
+  <script src="training.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
